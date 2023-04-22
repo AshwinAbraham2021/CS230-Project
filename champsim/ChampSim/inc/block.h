@@ -8,10 +8,10 @@
 // CACHE BLOCK
 class BLOCK {
   public:
-    uint8_t valid,
-            prefetch,
-            dirty,
-            used;
+    uint8_t valid, // Valid bit
+            prefetch, // Prefetch bit
+            dirty, // Dirty bit
+            used; // Has this been used? (after prefetch)
 
     int delta,
         depth,
@@ -27,8 +27,12 @@ class BLOCK {
              instr_id;
 
     // replacement state
-    uint32_t lru;
-
+    uint32_t lru; // LRU index (0 => MRU)
+    uint32_t lfu; // New addition
+    uint32_t random; // New addition
+    /*New Addition*/
+    uint64_t cycle = 0; //cycle in which the block was updated
+    /*End of New Addition*/
     BLOCK() {
         valid = 0;
         prefetch = 0;
@@ -48,6 +52,8 @@ class BLOCK {
         instr_id = 0;
 
         lru = 0;
+        lfu = 0; // New addition
+        random = 0; // New addition
     };
 };
 
