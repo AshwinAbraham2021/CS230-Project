@@ -1,7 +1,7 @@
 import os
 
 ########## !!!!! MODIFY APPROPRIATELY !!!!! ##########
-TRACE_FILE = "sssp-3.trace.gz"
+TRACE_FILE = "sssp-10.trace.gz"
 ########## !!!!! MODIFY APPROPRIATELY !!!!! ##########
 
 KB = 1024
@@ -14,6 +14,7 @@ REPL_POLICIES = ['lru', 'lfu', 'fifo', 'random']
 BRANCH_PREDICTOR = "gshare"
 N_WARM = 20
 N_SIM = 30
+NUM_CORES = 4
 
 if not os.path.isdir("results"):
     os.system("mkdir results")
@@ -26,6 +27,6 @@ for REPL_POLICY in REPL_POLICIES:
                 f.write(f"#define L2C_WAY {int(L2_SIZE[1])}\n")
                 f.write(f"#define LLC_SET NUM_CPUS*{int(LLC_SIZE)}\n")
                 f.write(f"#define LLC_WAY {int(LLC_WAY)}\n")
-            os.system(f"./build_champsim.sh {BRANCH_PREDICTOR} no no no no {REPL_POLICY} 1")
-            os.system(f"./run_champsim.sh {BRANCH_PREDICTOR}-no-no-no-no-{REPL_POLICY}-1core {N_WARM} {N_SIM} {TRACE_FILE}")
-            os.system(f"mv results_{N_SIM}M/{TRACE_FILE}-{BRANCH_PREDICTOR}-no-no-no-no-{REPL_POLICY}-1core.txt results/{TRACE_FILE}-{int(L2_SIZE[0])}-{int(L2_SIZE[1])}-{int(LLC_SIZE)}-{int(LLC_WAY)}-{BRANCH_PREDICTOR}-no-no-no-no-{REPL_POLICY}-1core.txt")
+            os.system(f"./build_champsim.sh {BRANCH_PREDICTOR} no no no no {REPL_POLICY} {NUM_CORES}")
+            os.system(f"./run_champsim.sh {BRANCH_PREDICTOR}-no-no-no-no-{REPL_POLICY}-{NUM_CORES}core {N_WARM} {N_SIM} {TRACE_FILE}")
+            os.system(f"mv results_{N_SIM}M/{TRACE_FILE}-{BRANCH_PREDICTOR}-no-no-no-no-{REPL_POLICY}-{NUM_CORES}core.txt results/{TRACE_FILE}-{int(L2_SIZE[0])}-{int(L2_SIZE[1])}-{int(LLC_SIZE)}-{int(LLC_WAY)}-{BRANCH_PREDICTOR}-no-no-no-no-{REPL_POLICY}-{NUM_CORES}core.txt")
