@@ -7,10 +7,10 @@ TRACE_FILE = "sssp-3.trace.gz"
 KB = 1024
 MB = 1024*1024
 
-L2_SIZES = [(256*KB/8, 8)] #, (256*KB/32, 32), (512*KB/8, 8)]
+L2_SIZES = [(256*KB/8, 8), (256*KB/32, 32), (512*KB/8, 8)]
 LLC_WAY = 16
-LLC_SIZES = [8*MB/LLC_WAY] #, 16*MB/LLC_WAY, 32*MB/LLC_WAY, 64*MB/LLC_WAY]
-REPL_POLICIES = ['lru'] #, 'lfu', 'fifo', 'random']
+LLC_SIZES = [8*MB/LLC_WAY, 16*MB/LLC_WAY, 32*MB/LLC_WAY, 64*MB/LLC_WAY]
+REPL_POLICIES = ['lru', 'lfu', 'fifo', 'random']
 BRANCH_PREDICTOR = "gshare"
 N_WARM = 20
 N_SIM = 30
@@ -28,4 +28,4 @@ for REPL_POLICY in REPL_POLICIES:
                 f.write(f"#define LLC_WAY {int(LLC_WAY)}\n")
             os.system(f"./build_champsim.sh {BRANCH_PREDICTOR} no no no no {REPL_POLICY} 1")
             os.system(f"./run_champsim.sh {BRANCH_PREDICTOR}-no-no-no-no-{REPL_POLICY}-1core {N_WARM} {N_SIM} {TRACE_FILE}")
-            os.system(f"mv results_{N_SIM}M/{TRACE_FILE}-{BRANCH_PREDICTOR}-no-no-no-no-{REPL_POLICY}-1core.txt results/")
+            os.system(f"mv results_{N_SIM}M/{TRACE_FILE}-{BRANCH_PREDICTOR}-no-no-no-no-{REPL_POLICY}-1core.txt results/{TRACE_FILE}-{int(L2_SIZE[0])}-{int(L2_SIZE[1])}-{int(LLC_SIZE)}-{int(LLC_WAY)}-{BRANCH_PREDICTOR}-no-no-no-no-{REPL_POLICY}-1core.txt")
