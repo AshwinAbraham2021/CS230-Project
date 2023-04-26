@@ -1,0 +1,148 @@
+#include "cache.h"
+
+#define PRIVILEGED_RATIO 0.4
+
+
+// initialize replacement state
+void CACHE::llc_initialize_replacement()
+{
+    
+}
+
+// find replacement victim
+uint32_t CACHE::llc_find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
+{
+    // baseline LFU
+    return lrfu_victim(cpu, instr_id, set, current_set, ip, full_addr, type); 
+}
+
+// called on every cache hit and cache fill
+void CACHE::llc_update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit)
+{
+    string TYPE_NAME;
+    if (type == LOAD)
+        TYPE_NAME = "LOAD";
+    else if (type == RFO)
+        TYPE_NAME = "RFO";
+    else if (type == PREFETCH)
+        TYPE_NAME = "PF";
+    else if (type == WRITEBACK)
+        TYPE_NAME = "WB";
+    else
+        assert(0);
+
+    if (hit)
+        TYPE_NAME += "_HIT";
+    else
+        TYPE_NAME += "_MISS";
+
+    if ((type == WRITEBACK) && ip)
+        assert(0);
+
+    // uncomment this line to see the LLC accesses
+    // cout << "CPU: " << cpu << "  LLC " << setw(9) << TYPE_NAME << " set: " << setw(5) << set << " way: " << setw(2) << way;
+    // cout << hex << " paddr: " << setw(12) << paddr << " ip: " << setw(8) << ip << " victim_addr: " << victim_addr << dec << endl;
+
+    // baseline LRU
+    if (hit && (type == WRITEBACK)) // writeback hit does not update LRU state
+        return;
+
+    return lrfu_update(set, way);
+}
+
+void CACHE::llc_replacement_final_stats()
+{
+
+}
+
+uint32_t CACHE::lrfu_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
+{
+    // fill invalid line first
+    for (uint32_t way = 0; way < NUM_WAY; way++) {
+        if (block[set][way].valid == false) {
+
+            // DP ( if (warmup_complete[cpu]) {
+            // cout << "[" << NAME << "] " << __func__ << " instr_id: " << instr_id << " invalid set: " << set << " way: " << way;
+            // cout << hex << " address: " << (full_addr>>LOG2_BLOCK_SIZE) << " victim address: " << block[set][way].address << " data: " << block[set][way].data;
+            // cout << dec << " lru: " << block[set][way].lru << endl; });
+
+            return way;
+        }
+    }
+
+    // LRFU victim
+    // Return which way is to be evicted
+    uint32_t min_freq;
+    uint32_t min_freq_index;
+    bool found = false;
+
+    for(uint32_t way = 0; way < NUM_WAY; way++){
+        if(!block[set][way].is_privileged){
+            if(!found){
+                found = true;
+                min_freq = block[set][way].lfu;
+                min_freq_index = way;
+            } else{
+                if(min_freq > block[set][way].lfu){
+                    min_freq = block[set][way].lfu;
+                    min_freq_index = way;
+                }
+            }
+        }
+    }
+    
+    return min_freq_index;
+}
+
+// Update internal variables
+void CACHE::lrfu_update(uint32_t set, uint32_t way)
+{
+    if(block[set][way].used){ 
+        if(block[set][way].is_privileged){
+            block[set][way].lrfu++;
+            min_lrfu_privileged = block[set][way].lrfu;
+            for(uint32_t w = 0; w < NUM_WAY; w++){
+                if(block[set][w].is_privileged)
+                    min_lrfu_privileged = min(min_lrfu_privileged, block[set][w].lrfu);
+            }
+        } else{
+            block[set][way].lrfu++;
+            if(block[set][way].lrfu > min_lrfu_privileged){
+                // Evict from privileged based on LRU
+                int evicted_way;
+                for(evicted_way = 0; evicted_way < NUM_WAY; evicted_way++){
+                    if(block[set][evicted_way].is_privileged)
+                        if(block[set][evicted_way].lru == NUM_WAY-1)
+                            break;
+                }
+
+                // Promote unprivileged block to privileged
+                block[set][way].is_privileged = true;
+                for(uint32_t w = 0; w < NUM_WAY; w++){
+                if(block[set][w].is_privileged)
+                        block[set][w].lru++;
+                }
+                block[set][way].lru = 0;
+                for(uint32_t w = 0; w < NUM_WAY; w++){
+                    if(block[set][w].is_privileged)
+                        min_lrfu_privileged = min(min_lrfu_privileged, block[set][w].lrfu);
+                }
+
+                // Evicted privileged block to unprivileged
+                block[set][evicted_way].is_privileged = false;
+            }
+        }
+    } else{ 
+        block[set][way].lrfu = 1;
+        block[set][way].is_privileged = false;
+        if(num_privileged_blocks < NUM_PRIVILEGED_WAYS){
+            num_privileged_blocks++;
+            block[set][way].is_privileged = true;
+            for(uint32_t w = 0; w < NUM_WAY; w++){
+                if(block[set][w].is_privileged)
+                    block[set][w].lru++;
+            }
+            block[set][way].lru = 0;
+        }
+    }
+}
