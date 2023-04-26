@@ -29,7 +29,9 @@ class BLOCK {
     // replacement state
     uint32_t lru; // LRU index (0 => MRU)
     uint32_t lfu; // New addition
-    uint32_t random; // New addition
+    uint32_t random; // New additiont
+    uint64_t lrfu;
+    bool is_privileged;
     /*New Addition*/
     uint64_t cycle = 0; //cycle in which the block was updated
     /*End of New Addition*/
@@ -54,6 +56,8 @@ class BLOCK {
         lru = 0;
         lfu = 0; // New addition
         random = 0; // New addition
+        lrfu = 0;
+        is_privileged = false;
     };
 };
 
