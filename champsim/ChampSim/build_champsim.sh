@@ -9,12 +9,14 @@ fi
 # ChampSim configuration
 BRANCH=$1           # branch/*.bpred
 L1I_PREFETCHER=$2   # prefetcher/*.l1i_pref
+# echo "$2, $3, $4, $5"
 L1D_PREFETCHER=$3   # prefetcher/*.l1d_pref
 L2C_PREFETCHER=$4   # prefetcher/*.l2c_pref
 LLC_PREFETCHER=$5   # prefetcher/*.llc_pref
 LLC_REPLACEMENT=$6  # replacement/*.llc_repl
 NUM_CORE=$7         # tested up to 8-core system
 REPL_POLICY=$8
+# echo $LLC_REPLACEMENT
 L2_SIZE_0=${9}
 # echo "$L2_SIZE_0"
 L2_SIZE_1=${10}

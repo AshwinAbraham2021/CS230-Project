@@ -502,7 +502,7 @@ void CACHE::handle_writeback()
                 #ifdef EXCLUSIVE
                 val3 = val3 || (cache_type == IS_L1D) || (cache_type == IS_L1I) || (cache_type == IS_L2C);
                 #endif
-                if (block[set][way].dirty)
+                if (val3)
                 {
 
                     // check if the lower level WQ has enough room to keep this writeback request
