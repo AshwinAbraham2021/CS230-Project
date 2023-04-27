@@ -78,9 +78,7 @@ extern uint32_t PAGE_TABLE_LATENCY, SWAP_LATENCY;
 #define LLC_WQ_SIZE NUM_CPUS*L2C_MSHR_SIZE //48
 #define LLC_PQ_SIZE NUM_CPUS*32
 #define LLC_MSHR_SIZE NUM_CPUS*64/2
-#define LLC_LATENCY 20  // 4/5 (L1I or L1D) + 10 + 20 = 34/35 cycles
-
-#define PRIVILEGED_RATIO 0.4
+#define LLC_LATENCY (((0.001*LLC_SET*LLC_WAY - 2)*10.0/3.0) + 20) // 4/5 (L1I or L1D) + 10 + 20 = 34/35 cycles
 
 class CACHE : public MEMORY {
   public:
@@ -93,10 +91,6 @@ class CACHE : public MEMORY {
     uint32_t MAX_READ, MAX_FILL;
     uint32_t reads_available_this_cycle;
     uint8_t cache_type;
-
-    uint64_t num_privileged_blocks;
-    uint64_t min_lrfu_privileged;
-    const uint64_t NUM_PRIVILEGED_WAYS = NUM_WAY * PRIVILEGED_RATIO;
 
     // prefetch stats
     uint64_t pf_requested,
@@ -150,9 +144,6 @@ class CACHE : public MEMORY {
                 roi_miss[i][j] = 0;
             }
         }
-        
-        num_privileged_blocks = 0;
-        min_lrfu_privileged = 1;
 
 	total_miss_latency = 0;
 
@@ -185,6 +176,8 @@ class CACHE : public MEMORY {
          operate(),
          increment_WQ_FULL(uint64_t address);
 
+    void back_invalidate(uint64_t cache_level, uint64_t set, uint64_t way );   //////////changed
+
     uint32_t get_occupancy(uint8_t queue_type, uint64_t address),
              get_size(uint8_t queue_type, uint64_t address);
 
@@ -206,7 +199,6 @@ class CACHE : public MEMORY {
          llc_update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit),
          lru_update(uint32_t set, uint32_t way),
          lfu_update(uint32_t set, uint32_t way),
-         lrfu_update(uint32_t set, uint32_t way),
          fifo_update(uint32_t set, uint32_t way),
          random_update(uint32_t set, uint32_t way),
          fill_cache(uint32_t set, uint32_t way, PACKET *packet),
@@ -237,7 +229,6 @@ class CACHE : public MEMORY {
              find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type),
              llc_find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type),
              lru_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type), 
-             lrfu_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type), 
              lfu_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type),
              random_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type),
              fifo_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type);

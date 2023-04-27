@@ -1,7 +1,44 @@
 #include "cache.h"
 #include "set.h"
+#include "ooo_cpu.h"
 
 uint64_t l2pf_access = 0;
+
+void CACHE::back_invalidate(uint64_t cache_level, uint64_t set, uint64_t way ){
+    if(block[set][way].valid){
+        if(cache_level == IS_LLC){
+            for (uint64_t i=0; i<NUM_CPUS; i++) {
+                int32_t way_in_L2 = ooo_cpu[i].L2C.check_hit(&MSHR.entry[MSHR.next_fill_index]);
+                if (way_in_L2 != -1) { 
+                    int32_t way_in_L1i = ooo_cpu[i].L1I.check_hit(&MSHR.entry[MSHR.next_fill_index]);
+                    int32_t way_in_L1d = ooo_cpu[i].L1D.check_hit(&MSHR.entry[MSHR.next_fill_index]);
+                    if (way_in_L1i != -1) {
+                        ooo_cpu[i].L1I.invalidate_entry(block[set][way].address);
+                    }
+                    if (way_in_L1d != -1) {
+                        ooo_cpu[i].L1D.invalidate_entry(block[set][way].address);
+                    }
+                    ooo_cpu[i].L2C.invalidate_entry(block[set][way].address);
+                }
+            }
+        }
+        else if(cache_level == IS_L2C)
+        {
+            for(uint64_t i = 0; i < NUM_CPUS; ++i)
+            {
+                int32_t way_in_L1i = ooo_cpu[i].L1I.check_hit(&MSHR.entry[MSHR.next_fill_index]);
+                int32_t way_in_L1d = ooo_cpu[i].L1D.check_hit(&MSHR.entry[MSHR.next_fill_index]);
+                if (way_in_L1i != -1) {
+                    ooo_cpu[i].L1I.invalidate_entry(block[set][way].address);
+                }
+                if (way_in_L1d != -1) {
+                    ooo_cpu[i].L1D.invalidate_entry(block[set][way].address);
+                }
+            }
+        }
+        }
+    }
+
 
 // Handles the next fill from MSHR
 void CACHE::handle_fill()
@@ -31,8 +68,16 @@ void CACHE::handle_fill()
         else
             way = find_victim(fill_cpu, MSHR.entry[mshr_index].instr_id, set, block[set], MSHR.entry[mshr_index].ip, MSHR.entry[mshr_index].full_addr, MSHR.entry[mshr_index].type);
 
+        #ifdef INCLUSIVE
+            back_invalidate(cache_type, set, way);   ///////changed
+        #endif
+
 #ifdef LLC_BYPASS
-        if ((cache_type == IS_LLC) && (way == LLC_WAY))
+        uint8_t val = (cache_type == IS_LLC) && (way == LLC_WAY);
+        #ifdef EXCLUSIVE
+            val = (cache_type == IS_LLC) || (cache_type == IS_L2C);
+        #endif
+        if (val)
         { // this is a bypass that does not fill the LLC
 
             // update replacement policy
@@ -50,7 +95,6 @@ void CACHE::handle_fill()
             // check fill level
             if (MSHR.entry[mshr_index].fill_level < fill_level)
             {
-
                 if (fill_level == FILL_L2)
                 {
                     if (MSHR.entry[mshr_index].fill_l1i)
@@ -89,7 +133,12 @@ void CACHE::handle_fill()
         uint8_t do_fill = 1; // Should I fill the lower level WQ?
 
         // is this dirty?
-        if (block[set][way].dirty)
+        uint8_t val2 = block[set][way].dirty;
+        #ifdef EXCLUSIVE
+        val2 = val2 || (cache_type == IS_L1D) || (cache_type == IS_L1I);
+        #endif
+
+        if (val2)
         {
 
             // check if the lower level WQ has enough room to keep this writeback request
@@ -449,6 +498,10 @@ void CACHE::handle_writeback()
                 uint8_t do_fill = 1;
 
                 // is this dirty?
+                uint8_t val3 = block[set][way].dirty;
+                #ifdef EXCLUSIVE
+                val3 = val3 || (cache_type == IS_L1D) || (cache_type == IS_L1I) || (cache_type == IS_L2C);
+                #endif
                 if (block[set][way].dirty)
                 {
 
@@ -587,7 +640,11 @@ void CACHE::handle_read()
 
             if (way >= 0)
             { // read hit
-
+                #ifdef EXCLUSIVE
+                if((cache_type == IS_L2C) || (cache_type == IS_LLC)){
+                    invalidate_entry(RQ.entry[index].address);
+                }
+                #endif
                 if (cache_type == IS_ITLB)
                 {
                     RQ.entry[index].instruction_pa = block[set][way].data;
@@ -622,11 +679,15 @@ void CACHE::handle_read()
                     if (cache_type == IS_L1D)
                         l1d_prefetcher_operate(RQ.entry[index].full_addr, RQ.entry[index].ip, 1, RQ.entry[index].type);
                     else if (cache_type == IS_L2C)
+                    {
                         l2c_prefetcher_operate(block[set][way].address << LOG2_BLOCK_SIZE, RQ.entry[index].ip, 1, RQ.entry[index].type, 0);
+                        invalidate_entry(block[set][way].address);
+                    }
                     else if (cache_type == IS_LLC)
                     {
                         cpu = read_cpu;
                         llc_prefetcher_operate(block[set][way].address << LOG2_BLOCK_SIZE, RQ.entry[index].ip, 1, RQ.entry[index].type, 0);
+                        invalidate_entry(block[set][way].address);
                         cpu = 0;
                     }
                 }

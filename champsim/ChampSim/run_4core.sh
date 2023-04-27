@@ -1,8 +1,8 @@
 #!/bin/bash
 
-if [ "$#" -lt 8 ] || [ "$#" -gt 9 ]; then
+if [ "$#" -ne 15 ]; then
     echo "Illegal number of parameters"
-    echo "Usage: ./run_4core.sh [BINARY] [N_WARM] [N_SIM] [N_MIX] [TRACE0] [TRACE1] [TRACE2] [TRACE3] [OPTION]"
+    echo "Usage: ./run_4core.sh [BINARY] [N_WARM] [N_SIM] [N_MIX] [TRACE0] [TRACE1] [TRACE2] [TRACE3] [REPL_POLICY] [L2_SIZE_0] [L2_SIZE_1] [LLC_SIZE] [LLC_WAY] [BRANCH_PREDICTOR] [CACHE_TYPE]"
     exit 1
 fi
 
@@ -15,7 +15,15 @@ TRACE0=${5}
 TRACE1=${6}
 TRACE2=${7}
 TRACE3=${8}
-OPTION=${9}
+# OPTION=${9}
+REPL_POLICY=${9}
+L2_SIZE_0=${10}
+L2_SIZE_1=${11}
+LLC_SIZE=${12}
+LLC_WAY=${13}
+BRANCH_PREDICTOR=${14}
+CACHE_TYPE=${15}
+
 
 # Sanity check
 if [ -z $TRACE_DIR ] || [ ! -d "$TRACE_DIR" ] ; then
@@ -60,5 +68,5 @@ if [ ! -f "$TRACE_DIR/$TRACE3" ] ; then
     exit 1
 fi
 
-mkdir -p results_4core_${N_SIM}M
-(./bin/${BINARY} -warmup_instructions ${N_WARM}000000 -simulation_instructions ${N_SIM}000000 ${OPTION} -traces ${TRACE_DIR}/${TRACE0} ${TRACE_DIR}/${TRACE1} ${TRACE_DIR}/${TRACE2} ${TRACE_DIR}/${TRACE3}) &> results_4core_${N_SIM}M/mix${N_MIX}-${BINARY}${OPTION}.txt
+# mkdir -p results_4core_${N_SIM}M
+(./bin/${BINARY} -warmup_instructions ${N_WARM}000000 -simulation_instructions ${N_SIM}000000  -traces ${TRACE_DIR}/${TRACE0} ${TRACE_DIR}/${TRACE1} ${TRACE_DIR}/${TRACE2} ${TRACE_DIR}/${TRACE3}) &> results/mix0-${L2_SIZE_0}-${L2_SIZE_1}-{$LLC_SIZE}-${LLC_WAY}-${BRANCH_PREDICTOR}-no-no-no-no-${REPL_POLICY}-${CACHE_TYPE}-4core.txt
