@@ -69,7 +69,7 @@ void CACHE::handle_fill()
             way = find_victim(fill_cpu, MSHR.entry[mshr_index].instr_id, set, block[set], MSHR.entry[mshr_index].ip, MSHR.entry[mshr_index].full_addr, MSHR.entry[mshr_index].type);
 
         #ifdef INCLUSIVE
-            back_invalidate(cache_type, set, way);   ///////changed
+            back_invalidate(cache_type, set, way);   ///////changed // 
         #endif
 
 #ifdef LLC_BYPASS
